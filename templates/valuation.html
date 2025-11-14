@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block content %}
+<h3>Valuation (FIFO)</h3>
+<p>This report shows remaining lots and their valuation under FIFO.</p>
+{% for item in data %}
+  <div class="card mb-3 p-3">
+    <h5>{{ item.fabric_type }} ({{ item.fabric_code }})</h5>
+    <p>Composition: {{ item.composition }}</p>
+    <table class="table">
+      <thead><tr><th>Lot date</th><th>Qty remaining</th><th>Price/m</th><th>Value</th></tr></thead>
+      <tbody>
+        {% for lot in item.lots %}
+        <tr>
+          <td>{{ lot.date }}</td>
+          <td>{{ lot.remaining }}</td>
+          <td>{{ lot.price_per_meter }}</td>
+          <td>{{ lot.value }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p><strong>Total valuation:</strong> {{ item.total_valuation }}</p>
+  </div>
+{% endfor %}
+{% endblock %}

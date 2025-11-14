@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3><i class="fas fa-shopping-bag"></i> Purchase History</h3>
+  <div>
+    <a class="btn btn-warning" href="/purchase-payments/pending"><i class="fas fa-clock"></i> Pending Payments</a>
+    <a class="btn btn-info" href="/purchase-payments/history"><i class="fas fa-history"></i> Payment History</a>
+  </div>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-hover">
+    <thead class="table-dark">
+      <tr>
+        <th>Date</th>
+        <th>Supplier</th>
+        <th>Fabric</th>
+        <th>Code</th>
+        <th>Composition</th>
+        <th>Quantity</th>
+        <th>Price/m</th>
+        <th>Total</th>
+        <th>Payment Status</th>
+        <th>Amount Paid</th>
+        <th>Amount Due</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in purchases %}
+      <tr class="{% if p.payment_status == 'pending' %}table-warning{% elif p.payment_status == 'partial' %}table-info{% endif %}">
+        <td>{{ p.date }}</td>
+        <td>{{ p.supplier.name }}</td>
+        <td>{{ p.fabric_type }}</td>
+        <td>{{ p.fabric_code }}</td>
+        <td>{{ p.composition }}</td>
+        <td>{{ p.quantity_meters }} m</td>
+        <td>₹{{ "%.2f"|format(p.price_per_meter) }}</td>
+        <td><strong>₹{{ "%.2f"|format(p.total_cost) }}</strong></td>
+        <td>
+          {% if p.payment_status == 'paid' %}
+            <span class="badge bg-success"><i class="fas fa-check-circle"></i> Paid</span>
+          {% elif p.payment_status == 'partial' %}
+            <span class="badge bg-info"><i class="fas fa-minus-circle"></i> Partial</span>
+          {% elif p.payment_status == 'pending' %}
+            <span class="badge bg-warning"><i class="fas fa-clock"></i> Pending</span>
+          {% endif %}
+          <br>
+          <small class="text-muted">{{ p.payment_method|title }}</small>
+        </td>
+        <td>
+          {% if p.amount_paid > 0 %}
+            <span class="text-success">₹{{ "%.2f"|format(p.amount_paid) }}</span>
+          {% else %}
+            <span class="text-muted">₹0.00</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if p.amount_due > 0 %}
+            <span class="text-danger"><strong>₹{{ "%.2f"|format(p.amount_due) }}</strong></span>
+          {% else %}
+            <span class="text-muted">₹0.00</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if p.payment_status in ['pending', 'partial'] %}
+            <a class="btn btn-sm btn-outline-success" href="/purchase-payments/record/{{ p.purchase_id }}" title="Record Payment">
+              <i class="fas fa-money-bill-wave"></i> Pay
+            </a>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="mt-3">
+  <a class="btn btn-outline-secondary" href="/export/purchases.csv"><i class="fas fa-download"></i> Export CSV</a>
+</div>
+{% endblock %}

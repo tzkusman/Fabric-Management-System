@@ -1,0 +1,206 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="ledger-header mb-4">
+  <h2><i class="fas fa-book"></i> Purchase Ledger</h2>
+  <p class="text-muted">Complete record of all fabric purchases with advanced filtering</p>
+</div>
+
+<!-- Advanced Filter Panel -->
+<div class="card mb-4 shadow-sm">
+  <div class="card-header bg-primary text-white">
+    <h5 class="mb-0"><i class="fas fa-filter"></i> Advanced Filters</h5>
+  </div>
+  <div class="card-body">
+    <form method="get" action="/ledger/purchases">
+      <div class="row g-3">
+        <!-- Supplier Filter -->
+        <div class="col-md-3">
+          <label class="form-label fw-bold">Supplier</label>
+          <select class="form-select" name="supplier_id">
+            <option value="">All Suppliers</option>
+            {% for supplier in suppliers %}
+            <option value="{{ supplier.supplier_id }}" 
+              {% if filters.supplier_id == supplier.supplier_id|string %}selected{% endif %}>
+              {{ supplier.name }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Fabric Type Filter -->
+        <div class="col-md-3">
+          <label class="form-label fw-bold">Fabric Type</label>
+          <input type="text" class="form-control" name="fabric_type" 
+            placeholder="e.g., Cotton, Silk" value="{{ filters.fabric_type or '' }}">
+        </div>
+
+        <!-- Fabric Code Filter -->
+        <div class="col-md-3">
+          <label class="form-label fw-bold">Fabric Code</label>
+          <input type="text" class="form-control" name="fabric_code" 
+            placeholder="e.g., FC001" value="{{ filters.fabric_code or '' }}">
+        </div>
+
+        <!-- Search Filter -->
+        <div class="col-md-3">
+          <label class="form-label fw-bold">Search</label>
+          <input type="text" class="form-control" name="search" 
+            placeholder="Search anything..." value="{{ filters.search or '' }}">
+        </div>
+
+        <!-- Date From -->
+        <div class="col-md-3">
+          <label class="form-label fw-bold">Date From</label>
+          <input type="date" class="form-control" name="date_from" 
+            value="{{ filters.date_from or '' }}">
+        </div>
+
+        <!-- Date To -->
+        <div class="col-md-3">
+          <label class="form-label fw-bold">Date To</label>
+          <input type="date" class="form-control" name="date_to" 
+            value="{{ filters.date_to or '' }}">
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="col-md-6 d-flex align-items-end gap-2">
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-search"></i> Apply Filters
+          </button>
+          <a href="/ledger/purchases" class="btn btn-outline-secondary">
+            <i class="fas fa-redo"></i> Reset
+          </a>
+          <a href="/export/ledger/purchases.csv?{{ request.query_params }}" class="btn btn-success">
+            <i class="fas fa-file-excel"></i> Export to Excel
+          </a>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+  <div class="col-md-4">
+    <div class="card text-center shadow-sm border-primary">
+      <div class="card-body">
+        <h6 class="text-muted mb-2">Total Transactions</h6>
+        <h3 class="text-primary mb-0">{{ ledger.count }}</h3>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card text-center shadow-sm border-info">
+      <div class="card-body">
+        <h6 class="text-muted mb-2">Total Quantity</h6>
+        <h3 class="text-info mb-0">{{ ledger.total_quantity }} m</h3>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card text-center shadow-sm border-success">
+      <div class="card-body">
+        <h6 class="text-muted mb-2">Total Amount</h6>
+        <h3 class="text-success mb-0">Rs. {{ ledger.total_amount }}</h3>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Ledger Table -->
+<div class="card shadow-sm">
+  <div class="card-header bg-light">
+    <h5 class="mb-0">Purchase Records ({{ ledger.count }} entries)</h5>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover table-striped mb-0">
+        <thead class="table-dark">
+          <tr>
+            <th>ID</th>
+            <th>Date</th>
+            <th>Supplier</th>
+            <th>Fabric Details</th>
+            <th>Code</th>
+            <th>Composition</th>
+            <th class="text-end">Qty (m)</th>
+            <th class="text-end">Rate</th>
+            <th class="text-end">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if ledger.purchases %}
+            {% for p in ledger.purchases %}
+            <tr>
+              <td><span class="badge bg-secondary">#{{ p.purchase_id }}</span></td>
+              <td>
+                <small>{{ p.date.strftime('%d %b %Y') }}</small><br>
+                <small class="text-muted">{{ p.date.strftime('%I:%M %p') }}</small>
+              </td>
+              <td>
+                <strong>{{ p.supplier.name }}</strong><br>
+                <small class="text-muted">{{ p.supplier.contact or 'N/A' }}</small>
+              </td>
+              <td><strong>{{ p.fabric_type }}</strong></td>
+              <td>{{ p.fabric_code or '-' }}</td>
+              <td><small>{{ p.composition or '-' }}</small></td>
+              <td class="text-end"><strong>{{ p.quantity_meters }}</strong></td>
+              <td class="text-end">Rs. {{ p.price_per_meter }}</td>
+              <td class="text-end"><strong class="text-success">Rs. {{ p.total_cost }}</strong></td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="9" class="text-center text-muted py-5">
+                <i class="fas fa-inbox fa-3x mb-3"></i><br>
+                No purchase records found matching your filters.
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+        {% if ledger.purchases %}
+        <tfoot class="table-light">
+          <tr>
+            <th colspan="6" class="text-end">GRAND TOTAL:</th>
+            <th class="text-end">{{ ledger.total_quantity }} m</th>
+            <th></th>
+            <th class="text-end text-success">Rs. {{ ledger.total_amount }}</th>
+          </tr>
+        </tfoot>
+        {% endif %}
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Links -->
+<div class="mt-4">
+  <a href="/ledger/supplier-summary" class="btn btn-outline-primary">
+    <i class="fas fa-chart-bar"></i> Supplier Summary
+  </a>
+  <a href="/purchases" class="btn btn-outline-secondary">
+    <i class="fas fa-list"></i> View All Purchases
+  </a>
+  <a href="/" class="btn btn-outline-secondary">
+    <i class="fas fa-home"></i> Back Home
+  </a>
+</div>
+
+<style>
+.ledger-header {
+  border-bottom: 3px solid #0d6efd;
+  padding-bottom: 15px;
+}
+.table th {
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.card {
+  transition: transform 0.2s;
+}
+.card:hover {
+  transform: translateY(-2px);
+}
+</style>
+{% endblock %}

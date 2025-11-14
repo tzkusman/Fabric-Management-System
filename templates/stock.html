@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block content %}
+<h3>Stock Summary</h3>
+<form method="get" action="/stock" class="mb-3">
+  <div class="input-group">
+    <input class="form-control" name="q" placeholder="Search fabric type or code" value="{{ request.query_params.get('q','') }}" />
+    <button class="btn btn-outline-secondary" type="submit">Search</button>
+  </div>
+</form>
+<table class="table table-striped">
+  <thead><tr><th>Fabric Type</th><th>Code</th><th>Composition</th><th>Total Purchased</th><th>Total Sold</th><th>Balance (m)</th><th>Avg Cost/m</th><th>Valuation</th></tr></thead>
+  <tbody>
+    {% for s in stock %}
+    <tr>
+      <td>{{ s.fabric_type }}</td>
+      <td>{{ s.get('fabric_code','') }}</td>
+      <td>{{ s.get('composition','') }}</td>
+      <td>{{ s.total_purchased }}</td>
+      <td>{{ s.total_sold }}</td>
+      <td>{{ s.balance_in_meters }}</td>
+      <td>{{ s.avg_cost_per_meter }}</td>
+      <td>{{ s.stock_valuation }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<div class="mt-3">
+  <a class="btn btn-outline-secondary" href="/export/stock.csv">Export CSV</a>
+</div>
+{% endblock %}

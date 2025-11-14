@@ -1,0 +1,217 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="ledger-header mb-4">
+  <h2><i class="fas fa-truck"></i> Supplier Ledger Summary</h2>
+  <p class="text-muted">Purchase summary grouped by suppliers with transaction details</p>
+</div>
+
+<!-- Date Filter Panel -->
+<div class="card mb-4 shadow-sm">
+  <div class="card-header bg-primary text-white">
+    <h5 class="mb-0"><i class="fas fa-calendar-alt"></i> Date Range Filter</h5>
+  </div>
+  <div class="card-body">
+    <form method="get" action="/ledger/supplier-summary" class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label fw-bold">From Date</label>
+        <input type="date" class="form-control" name="date_from" 
+          value="{{ filters.date_from or '' }}">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label fw-bold">To Date</label>
+        <input type="date" class="form-control" name="date_to" 
+          value="{{ filters.date_to or '' }}">
+      </div>
+      <div class="col-md-4 d-flex align-items-end gap-2">
+        <button type="submit" class="btn btn-primary">
+          <i class="fas fa-search"></i> Filter
+        </button>
+        <a href="/ledger/supplier-summary" class="btn btn-outline-secondary">
+          <i class="fas fa-redo"></i> Reset
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Overall Summary -->
+{% set total_suppliers = summary|length %}
+{% set total_transactions = summary|sum(attribute='transaction_count') %}
+{% set total_quantity = summary|sum(attribute='total_quantity') %}
+{% set total_spent = summary|sum(attribute='total_amount') %}
+
+<div class="row mb-4">
+  <div class="col-md-3">
+    <div class="card text-center shadow-sm border-primary">
+      <div class="card-body">
+        <h6 class="text-muted mb-2">Active Suppliers</h6>
+        <h2 class="text-primary mb-0">{{ total_suppliers }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center shadow-sm border-info">
+      <div class="card-body">
+        <h6 class="text-muted mb-2">Total Purchases</h6>
+        <h2 class="text-info mb-0">{{ total_transactions }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center shadow-sm border-warning">
+      <div class="card-body">
+        <h6 class="text-muted mb-2">Total Quantity Purchased</h6>
+        <h2 class="text-warning mb-0">{{ total_quantity }} m</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center shadow-sm border-danger">
+      <div class="card-body">
+        <h6 class="text-muted mb-2">Total Spent</h6>
+        <h2 class="text-danger mb-0">Rs. {{ total_spent }}</h2>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Supplier Summary Table -->
+<div class="card shadow-sm">
+  <div class="card-header bg-light d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">Supplier-wise Purchase Summary</h5>
+    <span class="badge bg-primary">{{ total_suppliers }} Suppliers</span>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover table-striped mb-0">
+        <thead class="table-dark">
+          <tr>
+            <th>#</th>
+            <th>Supplier Name</th>
+            <th>Contact</th>
+            <th class="text-center">Transactions</th>
+            <th class="text-end">Total Quantity (m)</th>
+            <th class="text-end">Total Amount</th>
+            <th class="text-center">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if summary %}
+            {% for supplier in summary %}
+            <tr>
+              <td>{{ loop.index }}</td>
+              <td>
+                <strong>{{ supplier.supplier_name }}</strong>
+                <br><small class="text-muted">ID: #{{ supplier.supplier_id }}</small>
+              </td>
+              <td>{{ supplier.contact or 'N/A' }}</td>
+              <td class="text-center">
+                <span class="badge bg-info">{{ supplier.transaction_count }}</span>
+              </td>
+              <td class="text-end"><strong>{{ supplier.total_quantity }}</strong></td>
+              <td class="text-end"><strong class="text-danger">Rs. {{ supplier.total_amount }}</strong></td>
+              <td class="text-center">
+                <a href="/ledger/purchases?supplier_id={{ supplier.supplier_id }}{% if filters.date_from %}&date_from={{ filters.date_from }}{% endif %}{% if filters.date_to %}&date_to={{ filters.date_to }}{% endif %}" 
+                   class="btn btn-sm btn-outline-primary">
+                  <i class="fas fa-eye"></i> View Details
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="7" class="text-center text-muted py-5">
+                <i class="fas fa-truck-loading fa-3x mb-3"></i><br>
+                No supplier purchases found for the selected period.
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+        {% if summary %}
+        <tfoot class="table-light">
+          <tr>
+            <th colspan="3" class="text-end">GRAND TOTAL:</th>
+            <th class="text-center">{{ total_transactions }}</th>
+            <th class="text-end">{{ total_quantity }} m</th>
+            <th class="text-end text-danger">Rs. {{ total_spent }}</th>
+            <th></th>
+          </tr>
+        </tfoot>
+        {% endif %}
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Supplier Rankings -->
+{% if summary %}
+<div class="row mt-4">
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-header bg-danger text-white">
+        <h6 class="mb-0"><i class="fas fa-trophy"></i> Top 5 by Spending</h6>
+      </div>
+      <div class="card-body">
+        <ol class="list-group list-group-numbered">
+          {% for supplier in summary|sort(attribute='total_amount', reverse=true)[:5] %}
+          <li class="list-group-item d-flex justify-content-between align-items-start">
+            <div class="ms-2 me-auto">
+              <div class="fw-bold">{{ supplier.supplier_name }}</div>
+              <small class="text-muted">{{ supplier.transaction_count }} purchases</small>
+            </div>
+            <span class="badge bg-danger rounded-pill">Rs. {{ supplier.total_amount }}</span>
+          </li>
+          {% endfor %}
+        </ol>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-header bg-warning">
+        <h6 class="mb-0"><i class="fas fa-chart-line"></i> Top 5 by Quantity</h6>
+      </div>
+      <div class="card-body">
+        <ol class="list-group list-group-numbered">
+          {% for supplier in summary|sort(attribute='total_quantity', reverse=true)[:5] %}
+          <li class="list-group-item d-flex justify-content-between align-items-start">
+            <div class="ms-2 me-auto">
+              <div class="fw-bold">{{ supplier.supplier_name }}</div>
+              <small class="text-muted">Rs. {{ supplier.total_amount }}</small>
+            </div>
+            <span class="badge bg-primary rounded-pill">{{ supplier.total_quantity }} m</span>
+          </li>
+          {% endfor %}
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Quick Links -->
+<div class="mt-4">
+  <a href="/ledger/purchases" class="btn btn-outline-primary">
+    <i class="fas fa-book"></i> Full Purchase Ledger
+  </a>
+  <a href="/add_supplier" class="btn btn-outline-success">
+    <i class="fas fa-truck-loading"></i> Add Supplier
+  </a>
+  <a href="/" class="btn btn-outline-secondary">
+    <i class="fas fa-home"></i> Back Home
+  </a>
+</div>
+
+<style>
+.ledger-header {
+  border-bottom: 3px solid #0d6efd;
+  padding-bottom: 15px;
+}
+.card {
+  transition: transform 0.2s;
+}
+.card:hover {
+  transform: translateY(-2px);
+}
+</style>
+{% endblock %}

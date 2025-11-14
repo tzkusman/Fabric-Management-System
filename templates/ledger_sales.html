@@ -1,0 +1,281 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="ledger-header mb-4">
+  <h2><i class="fas fa-book"></i> Sales Ledger</h2>
+  <p class="text-muted">Complete record of all fabric sales with advanced filtering & tax details</p>
+</div>
+
+<!-- Advanced Filter Panel -->
+<div class="card mb-4 shadow-sm">
+  <div class="card-header bg-success text-white">
+    <h5 class="mb-0"><i class="fas fa-filter"></i> Advanced Filters</h5>
+  </div>
+  <div class="card-body">
+    <form method="get" action="/ledger/sales">
+      <div class="row g-3">
+        <!-- Customer Filter -->
+        <div class="col-md-3">
+          <label class="form-label fw-bold">Customer</label>
+          <select class="form-select" name="customer_id">
+            <option value="">All Customers</option>
+            {% for customer in customers %}
+            <option value="{{ customer.customer_id }}" 
+              {% if filters.customer_id == customer.customer_id|string %}selected{% endif %}>
+              {{ customer.name }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Company Filter -->
+        <div class="col-md-3">
+          <label class="form-label fw-bold">Company</label>
+          <select class="form-select" name="company_id">
+            <option value="">All Companies</option>
+            {% for company in companies %}
+            <option value="{{ company.company_id }}" 
+              {% if filters.company_id == company.company_id|string %}selected{% endif %}>
+              {{ company.company_name }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Fabric Type Filter -->
+        <div class="col-md-3">
+          <label class="form-label fw-bold">Fabric Type</label>
+          <input type="text" class="form-control" name="fabric_type" 
+            placeholder="e.g., Cotton, Silk" value="{{ filters.fabric_type or '' }}">
+        </div>
+
+        <!-- Fabric Code Filter -->
+        <div class="col-md-3">
+          <label class="form-label fw-bold">Fabric Code</label>
+          <input type="text" class="form-control" name="fabric_code" 
+            placeholder="e.g., FC001" value="{{ filters.fabric_code or '' }}">
+        </div>
+
+        <!-- Date From -->
+        <div class="col-md-3">
+          <label class="form-label fw-bold">Date From</label>
+          <input type="date" class="form-control" name="date_from" 
+            value="{{ filters.date_from or '' }}">
+        </div>
+
+        <!-- Date To -->
+        <div class="col-md-3">
+          <label class="form-label fw-bold">Date To</label>
+          <input type="date" class="form-control" name="date_to" 
+            value="{{ filters.date_to or '' }}">
+        </div>
+
+        <!-- Tax Filter -->
+        <div class="col-md-3">
+          <label class="form-label fw-bold">Tax Applied</label>
+          <select class="form-select" name="apply_tax">
+            <option value="">All Transactions</option>
+            <option value="yes" {% if filters.apply_tax == 'yes' %}selected{% endif %}>With Tax</option>
+            <option value="no" {% if filters.apply_tax == 'no' %}selected{% endif %}>Without Tax</option>
+          </select>
+        </div>
+
+        <!-- Search Filter -->
+        <div class="col-md-3">
+          <label class="form-label fw-bold">Search</label>
+          <input type="text" class="form-control" name="search" 
+            placeholder="Search anything..." value="{{ filters.search or '' }}">
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="col-md-12 d-flex gap-2">
+          <button type="submit" class="btn btn-success">
+            <i class="fas fa-search"></i> Apply Filters
+          </button>
+          <a href="/ledger/sales" class="btn btn-outline-secondary">
+            <i class="fas fa-redo"></i> Reset
+          </a>
+          <a href="/export/ledger/sales.csv?{{ request.query_params }}" class="btn btn-primary">
+            <i class="fas fa-file-excel"></i> Export to Excel
+          </a>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+  <div class="col-md-3">
+    <div class="card text-center shadow-sm border-success">
+      <div class="card-body">
+        <h6 class="text-muted mb-2">Total Transactions</h6>
+        <h3 class="text-success mb-0">{{ ledger.count }}</h3>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center shadow-sm border-info">
+      <div class="card-body">
+        <h6 class="text-muted mb-2">Total Quantity</h6>
+        <h3 class="text-info mb-0">{{ ledger.total_quantity }} m</h3>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center shadow-sm border-warning">
+      <div class="card-body">
+        <h6 class="text-muted mb-2">Total Tax</h6>
+        <h3 class="text-warning mb-0">Rs. {{ ledger.total_tax }}</h3>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center shadow-sm border-primary">
+      <div class="card-body">
+        <h6 class="text-muted mb-2">Grand Total</h6>
+        <h3 class="text-primary mb-0">Rs. {{ ledger.total_amount }}</h3>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Additional Summary -->
+<div class="alert alert-info mb-4">
+  <div class="row text-center">
+    <div class="col-md-4">
+      <strong>Subtotal (Before Tax):</strong> Rs. {{ ledger.subtotal }}
+    </div>
+    <div class="col-md-4">
+      <strong>Tax Collected:</strong> Rs. {{ ledger.total_tax }}
+    </div>
+    <div class="col-md-4">
+      <strong>Net Revenue:</strong> Rs. {{ ledger.total_amount }}
+    </div>
+  </div>
+</div>
+
+<!-- Ledger Table -->
+<div class="card shadow-sm">
+  <div class="card-header bg-light">
+    <h5 class="mb-0">Sales Records ({{ ledger.count }} entries)</h5>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover table-striped mb-0">
+        <thead class="table-dark">
+          <tr>
+            <th>ID</th>
+            <th>Date</th>
+            <th>Customer</th>
+            <th>Company</th>
+            <th>Fabric Details</th>
+            <th>Code</th>
+            <th class="text-end">Qty (m)</th>
+            <th class="text-end">Rate</th>
+            <th>Tax</th>
+            <th class="text-end">Total</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if ledger.sales %}
+            {% for s in ledger.sales %}
+            <tr>
+              <td><span class="badge bg-success">#{{ s.sale_id }}</span></td>
+              <td>
+                <small>{{ s.date.strftime('%d %b %Y') }}</small><br>
+                <small class="text-muted">{{ s.date.strftime('%I:%M %p') }}</small>
+              </td>
+              <td>
+                <strong>{{ s.customer.name }}</strong><br>
+                <small class="text-muted">{{ s.customer.contact or 'N/A' }}</small>
+              </td>
+              <td>
+                {% if s.company %}
+                <small>{{ s.company.company_name }}</small>
+                {% else %}
+                <span class="text-muted">-</span>
+                {% endif %}
+              </td>
+              <td>
+                <strong>{{ s.fabric_type }}</strong><br>
+                <small class="text-muted">{{ s.composition or '-' }}</small>
+              </td>
+              <td>{{ s.fabric_code or '-' }}</td>
+              <td class="text-end"><strong>{{ s.quantity_meters }}</strong></td>
+              <td class="text-end">Rs. {{ s.price_per_meter }}</td>
+              <td>
+                {% if s.apply_tax %}
+                <span class="badge bg-warning text-dark">
+                  {{ (s.tax_rate * 100)|round(0)|int }}% 
+                  <br><small>Rs. {{ s.tax }}</small>
+                </span>
+                {% else %}
+                <span class="badge bg-secondary">No Tax</span>
+                {% endif %}
+              </td>
+              <td class="text-end"><strong class="text-primary">Rs. {{ s.total_price_with_tax }}</strong></td>
+              <td>
+                <a href="/invoice/{{ s.sale_id }}" class="btn btn-sm btn-outline-primary" target="_blank">
+                  <i class="fas fa-file-pdf"></i> Invoice
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="11" class="text-center text-muted py-5">
+                <i class="fas fa-inbox fa-3x mb-3"></i><br>
+                No sales records found matching your filters.
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+        {% if ledger.sales %}
+        <tfoot class="table-light">
+          <tr>
+            <th colspan="6" class="text-end">TOTALS:</th>
+            <th class="text-end">{{ ledger.total_quantity }} m</th>
+            <th></th>
+            <th class="text-end text-warning">Rs. {{ ledger.total_tax }}</th>
+            <th class="text-end text-primary">Rs. {{ ledger.total_amount }}</th>
+            <th></th>
+          </tr>
+        </tfoot>
+        {% endif %}
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Links -->
+<div class="mt-4">
+  <a href="/ledger/customer-summary" class="btn btn-outline-success">
+    <i class="fas fa-chart-bar"></i> Customer Summary
+  </a>
+  <a href="/sales" class="btn btn-outline-secondary">
+    <i class="fas fa-list"></i> View All Sales
+  </a>
+  <a href="/" class="btn btn-outline-secondary">
+    <i class="fas fa-home"></i> Back Home
+  </a>
+</div>
+
+<style>
+.ledger-header {
+  border-bottom: 3px solid #198754;
+  padding-bottom: 15px;
+}
+.table th {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.card {
+  transition: transform 0.2s;
+}
+.card:hover {
+  transform: translateY(-2px);
+}
+</style>
+{% endblock %}

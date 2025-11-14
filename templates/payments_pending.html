@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h3><i class="fas fa-clock text-warning"></i> Pending Payments</h3>
+  <div>
+    <a class="btn btn-outline-primary" href="/sales"><i class="fas fa-arrow-left"></i> Back to Sales</a>
+    <a class="btn btn-outline-info" href="/payments/credit-summary"><i class="fas fa-credit-card"></i> Credit Summary</a>
+  </div>
+</div>
+
+<!-- Filter Section -->
+<div class="card mb-4">
+  <div class="card-body">
+    <form method="get" class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label">Customer</label>
+        <select name="customer_id" class="form-select">
+          <option value="">All Customers</option>
+          {% for c in customers %}
+          <option value="{{ c.customer_id }}" {% if request.query_params.get('customer_id') == c.customer_id|string %}selected{% endif %}>
+            {{ c.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">From Date</label>
+        <input type="date" name="start_date" class="form-control" value="{{ request.query_params.get('start_date', '') }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">To Date</label>
+        <input type="date" name="end_date" class="form-control" value="{{ request.query_params.get('end_date', '') }}">
+      </div>
+      <div class="col-md-2 d-flex align-items-end">
+        <button type="submit" class="btn btn-primary w-100"><i class="fas fa-filter"></i> Filter</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+  <div class="col-md-4">
+    <div class="card bg-warning text-white">
+      <div class="card-body">
+        <h5 class="card-title"><i class="fas fa-exclamation-circle"></i> Total Pending</h5>
+        <h2>{{ pending_sales|length }}</h2>
+        <p class="mb-0">Unpaid Invoices</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card bg-danger text-white">
+      <div class="card-body">
+        <h5 class="card-title"><i class="fas fa-rupee-sign"></i> Total Amount Due</h5>
+        <h2>₹{{ "%.2f"|format(total_due) }}</h2>
+        <p class="mb-0">Outstanding Balance</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card bg-info text-white">
+      <div class="card-body">
+        <h5 class="card-title"><i class="fas fa-minus-circle"></i> Partial Payments</h5>
+        <h2>{{ partial_count }}</h2>
+        <p class="mb-0">Partially Paid</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Pending Sales Table -->
+{% if pending_sales %}
+<div class="card">
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-hover">
+        <thead class="table-dark">
+          <tr>
+            <th>Date</th>
+            <th>Customer</th>
+            <th>Fabric Details</th>
+            <th>Quantity</th>
+            <th>Total Amount</th>
+            <th>Amount Paid</th>
+            <th>Amount Due</th>
+            <th>Status</th>
+            <th>Payment Method</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for sale in pending_sales %}
+          <tr class="{% if sale.payment_status == 'pending' %}table-warning{% else %}table-info{% endif %}">
+            <td>{{ sale.date }}</td>
+            <td><strong>{{ sale.customer.name }}</strong></td>
+            <td>
+              <div>{{ sale.fabric_type }}</div>
+              <small class="text-muted">{{ sale.fabric_code }} - {{ sale.composition }}</small>
+            </td>
+            <td>{{ sale.quantity_meters }} m</td>
+            <td><strong>₹{{ "%.2f"|format(sale.total_price_with_tax) }}</strong></td>
+            <td>
+              {% if sale.amount_paid > 0 %}
+                <span class="text-success">₹{{ "%.2f"|format(sale.amount_paid) }}</span>
+              {% else %}
+                <span class="text-muted">₹0.00</span>
+              {% endif %}
+            </td>
+            <td><strong class="text-danger">₹{{ "%.2f"|format(sale.amount_due) }}</strong></td>
+            <td>
+              {% if sale.payment_status == 'pending' %}
+                <span class="badge bg-warning"><i class="fas fa-clock"></i> Pending</span>
+              {% elif sale.payment_status == 'partial' %}
+                <span class="badge bg-info"><i class="fas fa-minus-circle"></i> Partial</span>
+              {% endif %}
+            </td>
+            <td>{{ sale.payment_method|title }}</td>
+            <td>
+              <div class="btn-group btn-group-sm">
+                <a class="btn btn-success" href="/payments/record/{{ sale.sale_id }}" title="Record Payment">
+                  <i class="fas fa-money-bill-wave"></i> Pay
+                </a>
+                <a class="btn btn-outline-secondary" href="/invoice/{{ sale.sale_id }}" title="View Invoice">
+                  <i class="fas fa-file-pdf"></i>
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot class="table-secondary">
+          <tr>
+            <th colspan="4" class="text-end">Totals:</th>
+            <th>₹{{ "%.2f"|format(pending_sales|sum(attribute='total_price_with_tax')) }}</th>
+            <th>₹{{ "%.2f"|format(pending_sales|sum(attribute='amount_paid')) }}</th>
+            <th class="text-danger">₹{{ "%.2f"|format(pending_sales|sum(attribute='amount_due')) }}</th>
+            <th colspan="3"></th>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="alert alert-success" role="alert">
+  <i class="fas fa-check-circle"></i> <strong>Great!</strong> No pending payments. All sales are fully paid!
+</div>
+{% endif %}
+
+{% endblock %}

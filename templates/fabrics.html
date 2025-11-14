@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block content %}
+<h3>Fabrics</h3>
+<p>List of fabric types/codes discovered from purchases/sales.</p>
+<ul>
+  {% for f in fabrics %}
+  <li><strong>{{ f.fabric_type }}</strong> ({{ f.fabric_code }}) - {{ f.composition }}</li>
+  {% endfor %}
+</ul>
+{% endblock %}

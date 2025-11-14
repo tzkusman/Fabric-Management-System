@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="jumbotron p-4 mb-4 bg-light rounded-3">
+  <div class="container">
+    <h1 class="display-6">Fabric Management</h1>
+    <p class="lead">Track purchases, sales (with 18% tax), stock, and generate simple invoices.</p>
+    <hr class="my-3">
+    <p>Use the links above to start. Quick actions:</p>
+    <p class="lead">
+  <a class="btn btn-info btn-lg" href="/register_company" role="button">Register Company</a>
+  <a class="btn btn-primary btn-lg" href="/add_purchase" role="button">Add Purchase</a>
+  <a class="btn btn-success btn-lg" href="/add_sale" role="button">Add Sale</a>
+  <a class="btn btn-supplier btn-lg" href="/add_supplier" role="button">Add Supplier</a>
+  <a class="btn btn-customer btn-lg" href="/add_customer" role="button">Add Customer</a>
+    </p>
+  </div>
+</div>
+<div class="row">
+  <div class="col-md-4">
+    <div class="card mb-3">
+      <div class="card-body">
+        <h5 class="card-title">Stock</h5>
+        <p class="card-text">View current fabric balances and valuation.</p>
+        <a href="/stock" class="btn btn-outline-primary">View Stock</a>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card mb-3">
+      <div class="card-body">
+        <h5 class="card-title">Purchases</h5>
+        <p class="card-text">Review purchase history and totals.</p>
+        <a href="/purchases" class="btn btn-outline-primary">View Purchases</a>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card mb-3">
+      <div class="card-body">
+        <h5 class="card-title">Sales</h5>
+        <p class="card-text">Review sales, taxes, and invoices.</p>
+        <a href="/sales" class="btn btn-outline-primary">View Sales</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- New Ledger Section -->
+<div class="card bg-light mb-4 shadow-sm">
+  <div class="card-body">
+    <h4 class="card-title mb-3"><i class="fas fa-book"></i> Ledger & Reports</h4>
+    <p class="card-text">Advanced filtering and reporting for purchases and sales</p>
+    <div class="row g-2">
+      <div class="col-md-3">
+        <a href="/ledger/purchases" class="btn btn-primary w-100">
+          <i class="fas fa-book"></i> Purchase Ledger
+        </a>
+      </div>
+      <div class="col-md-3">
+        <a href="/ledger/sales" class="btn btn-success w-100">
+          <i class="fas fa-book"></i> Sales Ledger
+        </a>
+      </div>
+      <div class="col-md-3">
+        <a href="/ledger/customer-summary" class="btn btn-info w-100">
+          <i class="fas fa-users"></i> Customer Summary
+        </a>
+      </div>
+      <div class="col-md-3">
+        <a href="/ledger/supplier-summary" class="btn btn-warning w-100">
+          <i class="fas fa-truck"></i> Supplier Summary
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

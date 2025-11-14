@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header bg-success text-white">
+        <h4 class="mb-0"><i class="fas fa-money-bill-wave"></i> Record Purchase Payment</h4>
+      </div>
+      <div class="card-body">
+        <!-- Purchase Details Summary -->
+        <div class="alert alert-info">
+          <h5><i class="fas fa-info-circle"></i> Purchase Details</h5>
+          <div class="row">
+            <div class="col-md-6">
+              <p class="mb-1"><strong>Supplier:</strong> {{ purchase.supplier.name }}</p>
+              <p class="mb-1"><strong>Date:</strong> {{ purchase.date }}</p>
+              <p class="mb-1"><strong>Fabric:</strong> {{ purchase.fabric_type }} ({{ purchase.fabric_code }})</p>
+            </div>
+            <div class="col-md-6">
+              <p class="mb-1"><strong>Total Amount:</strong> ₹{{ "%.2f"|format(purchase.total_cost) }}</p>
+              <p class="mb-1"><strong>Amount Paid:</strong> <span class="text-success">₹{{ "%.2f"|format(purchase.amount_paid) }}</span></p>
+              <p class="mb-1"><strong>Amount Due:</strong> <span class="text-danger">₹{{ "%.2f"|format(purchase.amount_due) }}</span></p>
+            </div>
+          </div>
+        </div>
+
+        {% if error %}
+        <div class="alert alert-danger">
+          <i class="fas fa-exclamation-triangle"></i> {{ error }}
+        </div>
+        {% endif %}
+
+        <!-- Payment Form -->
+        <form method="post">
+          <div class="mb-3">
+            <label class="form-label">Payment Amount <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <span class="input-group-text">₹</span>
+              <input type="number" class="form-control" name="amount" id="payment_amount" 
+                step="0.01" min="0.01" max="{{ purchase.amount_due }}" 
+                value="{{ purchase.amount_due }}" required>
+            </div>
+            <small class="text-muted">Maximum: ₹{{ "%.2f"|format(purchase.amount_due) }}</small>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Payment Method <span class="text-danger">*</span></label>
+            <select class="form-select" name="payment_method" required>
+              <option value="cash" {% if purchase.payment_method == 'cash' %}selected{% endif %}>Cash</option>
+              <option value="bank" {% if purchase.payment_method == 'bank' %}selected{% endif %}>Bank Transfer</option>
+              <option value="cheque" {% if purchase.payment_method == 'cheque' %}selected{% endif %}>Cheque</option>
+              <option value="credit">Credit Card/Other</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Payment Date <span class="text-danger">*</span></label>
+            <input type="date" class="form-control" name="payment_date" 
+              value="{{ today }}" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Reference Number</label>
+            <input type="text" class="form-control" name="reference_number" 
+              placeholder="Transaction ID, Cheque No., etc.">
+            <small class="text-muted">Optional: Enter transaction reference for bank transfers or cheque numbers</small>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Notes</label>
+            <textarea class="form-control" name="notes" rows="3" 
+              placeholder="Add any additional notes about this payment..."></textarea>
+          </div>
+
+          <div class="alert alert-warning">
+            <i class="fas fa-calculator"></i> <strong>Calculation:</strong>
+            <p class="mb-0">
+              After this payment, the remaining balance will be: 
+              <strong id="remaining_balance" class="text-danger">₹{{ "%.2f"|format(purchase.amount_due) }}</strong>
+            </p>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-success btn-lg">
+              <i class="fas fa-check"></i> Record Payment
+            </button>
+            <a href="/purchase-payments/pending" class="btn btn-outline-secondary btn-lg">
+              <i class="fas fa-times"></i> Cancel
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Previous Payments History (if any) -->
+    {% if payments %}
+    <div class="card mt-4">
+      <div class="card-header bg-secondary text-white">
+        <h5 class="mb-0"><i class="fas fa-history"></i> Previous Payments</h5>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Amount</th>
+                <th>Method</th>
+                <th>Reference</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for payment in payments %}
+              <tr>
+                <td>{{ payment.payment_date }}</td>
+                <td>₹{{ "%.2f"|format(payment.amount) }}</td>
+                <td>{{ payment.payment_method|title }}</td>
+                <td>{{ payment.reference_number or '-' }}</td>
+                <td>{{ payment.notes or '-' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+  // Update remaining balance calculation when payment amount changes
+  document.getElementById('payment_amount').addEventListener('input', function() {
+    const amountDue = {{ purchase.amount_due }};
+    const paymentAmount = parseFloat(this.value) || 0;
+    const remaining = Math.max(0, amountDue - paymentAmount);
+    document.getElementById('remaining_balance').textContent = '₹' + remaining.toFixed(2);
+  });
+</script>
+
+{% endblock %}

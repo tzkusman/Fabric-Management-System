@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% block content %}
+<h3>Add Purchase</h3>
+{% if message %}
+<div class="alert alert-success">{{ message }}</div>
+{% endif %}
+<form method="post" action="/add_purchase" class="card p-3">
+  <div class="mb-3">
+    <label class="form-label">Supplier</label>
+    <select class="form-select" name="supplier_id" required>
+      {% for s in suppliers %}
+      <option value="{{ s.supplier_id }}">{{ s.name }} - {{ s.contact }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Fabric Type</label>
+    <input class="form-control" name="fabric_type" required />
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Fabric Code</label>
+    <input class="form-control" name="fabric_code" />
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Composition</label>
+    <input class="form-control" name="composition" />
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Quantity (meters)</label>
+    <input class="form-control" name="quantity_meters" type="number" step="0.01" required />
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Price per meter</label>
+    <input class="form-control" name="price_per_meter" type="number" step="0.01" required />
+  </div>
+
+  <!-- Payment Section -->
+  <div class="card bg-light mb-3">
+    <div class="card-body">
+      <h5 class="card-title"><i class="fas fa-money-bill-wave"></i> Payment Details</h5>
+      
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Payment Method</label>
+          <select class="form-select" name="payment_method" id="payment_method">
+            <option value="cash">Cash</option>
+            <option value="credit">Credit (Pay Later)</option>
+            <option value="bank">Bank Transfer</option>
+            <option value="cheque">Cheque</option>
+          </select>
+        </div>
+        
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Payment Status</label>
+          <select class="form-select" name="payment_status" id="payment_status" onchange="updatePaymentFields()">
+            <option value="paid">Paid (Full)</option>
+            <option value="partial">Partial Payment</option>
+            <option value="pending">Pending (No Payment)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="mb-3" id="amount_paid_div" style="display: none;">
+        <label class="form-label">Amount Paid</label>
+        <input type="number" class="form-control" name="amount_paid" id="amount_paid" 
+          placeholder="Enter amount paid" step="0.01" min="0">
+        <small class="text-muted">Leave blank for full payment or enter partial amount</small>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function updatePaymentFields() {
+      const paymentStatus = document.getElementById('payment_status').value;
+      const amountPaidDiv = document.getElementById('amount_paid_div');
+      const amountPaidInput = document.getElementById('amount_paid');
+      
+      if (paymentStatus === 'partial') {
+        amountPaidDiv.style.display = 'block';
+        amountPaidInput.required = true;
+      } else {
+        amountPaidDiv.style.display = 'none';
+        amountPaidInput.required = false;
+        if (paymentStatus === 'paid') {
+          amountPaidInput.value = '';
+        } else if (paymentStatus === 'pending') {
+          amountPaidInput.value = '0';
+        }
+      }
+    }
+    
+    // Set initial state when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+      updatePaymentFields();
+    });
+  </script>
+
+  <button class="btn btn-primary btn-lg" type="submit"><i class="fas fa-check"></i> Add Purchase</button>
+</form>
+<p class="mt-3"><a href="/">Back home</a></p>
+{% endblock %}

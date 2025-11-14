@@ -1,0 +1,84 @@
+body { background: #f8fafc; }
+.jumbotron { background: linear-gradient(90deg, #f8f9fa 0%, #ffffff 100%); box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
+.card { border-radius: 8px; }
+.alert { border-radius: 6px; }
+
+/* custom quick-action colors */
+.btn-supplier{ background: linear-gradient(90deg,#ff7f50,#ff6b6b); border: none; color: #fff }
+.btn-supplier:hover{ filter:brightness(0.95) }
+.btn-customer{ background: linear-gradient(90deg,#4facfe,#00f2fe); border: none; color: #fff }
+.btn-customer:hover{ filter:brightness(0.95) }
+
+/* Ledger enhancements */
+.ledger-header {
+  border-left: 5px solid #0d6efd;
+  padding-left: 15px;
+  margin-bottom: 20px;
+}
+
+.table-responsive {
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #212529;
+}
+
+/* Print styles for ledger */
+@media print {
+  .navbar, .btn, .card-header .btn, form, .no-print {
+    display: none !important;
+  }
+  .card {
+    border: 1px solid #ddd !important;
+    box-shadow: none !important;
+  }
+  .table {
+    font-size: 10pt;
+  }
+}
+
+/* Summary card animations */
+.card {
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* Filter panel styles */
+.card-header.bg-primary,
+.card-header.bg-success,
+.card-header.bg-info {
+  font-weight: 600;
+}
+
+/* Badge enhancements */
+.badge {
+  font-weight: 500;
+  padding: 0.4em 0.65em;
+}
+
+/* Dropdown menu styles */
+.dropdown-menu {
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.dropdown-item {
+  padding: 0.5rem 1rem;
+}
+
+.dropdown-item:hover {
+  background-color: #f8f9fa;
+}
+
+.dropdown-item i {
+  width: 20px;
+  margin-right: 8px;
+}
