@@ -2,56 +2,78 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h1 class="mb-4">Database Operations</h1>
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h1 class="mb-2"><i class="fas fa-database"></i> Database Backup & Restore</h1>
+            <p class="text-muted">Manage your complete fabric inventory database</p>
+        </div>
+    </div>
 
     {% if message %}
     <div class="alert alert-success alert-dismissible fade show" role="alert">
-        {{ message }}
+        <i class="fas fa-check-circle"></i> <strong>Success!</strong>
+        <br>{{ message }}
         {% if backup_file %}
-        <br>
-        <small>Backup saved as: {{ backup_file }}</small>
+        <br><small class="text-muted">Backup: <code>{{ backup_file }}</code></small>
         {% endif %}
-        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-        </button>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
     {% endif %}
 
     {% if error %}
     <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        {{ error }}
-        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-        </button>
+        <i class="fas fa-exclamation-circle"></i> <strong>Error!</strong>
+        <br>{{ error }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
     {% endif %}
 
     <div class="row">
         <!-- Export Section -->
-        <div class="col-md-6">
-            <div class="card">
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-download"></i> Export Database</h5>
+                </div>
                 <div class="card-body">
-                    <h5 class="card-title">Export Database</h5>
-                    <p class="card-text">Download a complete backup of your database.</p>
-                    <a href="/database/export" class="btn btn-primary">
-                        <i class="fas fa-download"></i> Export Database
+                    <p class="card-text">Download a complete backup of your entire database including:</p>
+                    <ul class="small">
+                        <li>✓ Companies & Registrations</li>
+                        <li>✓ Suppliers & Customers</li>
+                        <li>✓ All Purchases & Sales</li>
+                        <li>✓ Payment Records</li>
+                        <li>✓ Stock & Inventory</li>
+                    </ul>
+                    <p class="text-muted mt-3">
+                        <small><i class="fas fa-info-circle"></i> Database will be saved with timestamp:<br>
+                        fabric_backup_YYYYMMDD_HHMMSS.db</small>
+                    </p>
+                    <a href="/database/export" class="btn btn-primary btn-lg w-100 mt-3">
+                        <i class="fas fa-download"></i> Export Database Now
                     </a>
                 </div>
             </div>
         </div>
 
         <!-- Import Section -->
-        <div class="col-md-6">
-            <div class="card">
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="fas fa-upload"></i> Import Database</h5>
+                </div>
                 <div class="card-body">
-                    <h5 class="card-title">Import Database</h5>
                     <p class="card-text">Restore from a previously exported database file.</p>
-                    <form action="/database/import" method="post" enctype="multipart/form-data" onsubmit="return confirm('Warning: This will replace your current database. Make sure you have a backup. Continue?');">
-                        <div class="custom-file mb-3">
-                            <input type="file" class="custom-file-input" id="dbFile" name="file" accept=".db" required>
-                            <label class="custom-file-label" for="dbFile">Choose database file...</label>
+                    <p class="alert alert-info small">
+                        <i class="fas fa-shield-alt"></i> <strong>Safe Import:</strong>
+                        <br>Your current database will be automatically backed up before import
+                    </p>
+                    <form action="/database/import" method="post" enctype="multipart/form-data" onsubmit="return confirm('⚠️ Warning: This will replace your current database.\n\n✓ Your current data will be backed up\n✓ Only select files exported from this system\n\nContinue with import?');">
+                        <div class="mb-3">
+                            <label for="dbFile" class="form-label">Select Database File (.db)</label>
+                            <input type="file" class="form-control form-control-lg" id="dbFile" name="file" accept=".db" required>
+                            <small class="text-muted d-block mt-2">Only .db files exported from this system</small>
                         </div>
-                        <button type="submit" class="btn btn-warning">
+                        <button type="submit" class="btn btn-warning btn-lg w-100">
                             <i class="fas fa-upload"></i> Import Database
                         </button>
                     </form>
@@ -60,25 +82,86 @@
         </div>
     </div>
 
-    <div class="mt-4">
-        <div class="alert alert-info">
-            <h5>Important Notes:</h5>
-            <ul>
-                <li>Exporting will create a complete backup of your current database.</li>
-                <li>Before importing, make sure you have a backup of your current data.</li>
-                <li>Only import database files that were exported from this system.</li>
-                <li>The system will automatically create a backup before importing new data.</li>
-            </ul>
+    <!-- Information Section -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-info-circle"></i> Important Information</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>📋 What Gets Backed Up:</h6>
+                            <ul class="small">
+                                <li>Companies and registration details</li>
+                                <li>Suppliers and customers list</li>
+                                <li>All purchase records and details</li>
+                                <li>All sales records and invoices</li>
+                                <li>Payment history and tracking</li>
+                                <li>Stock and inventory data</li>
+                                <li>All custom fabric types and codes</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>🔒 Safety Features:</h6>
+                            <ul class="small">
+                                <li>✓ Database integrity verification</li>
+                                <li>✓ Automatic backup before import</li>
+                                <li>✓ Schema validation on import</li>
+                                <li>✓ Post-import verification</li>
+                                <li>✓ Timestamped backup files</li>
+                                <li>✓ Rollback on import failure</li>
+                                <li>✓ Error reporting and logging</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <hr>
+                    <h6>💡 Best Practices:</h6>
+                    <ul class="small mb-0">
+                        <li>Export your database regularly (at least weekly)</li>
+                        <li>Store backups in multiple secure locations</li>
+                        <li>Test imports in a safe environment first</li>
+                        <li>Only import files exported from this system</li>
+                        <li>Verify data integrity after import</li>
+                    </ul>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
 // Update file input label with selected filename
-document.querySelector('.custom-file-input').addEventListener('change', function(e) {
-    var fileName = e.target.files[0].name;
-    var nextSibling = e.target.nextElementSibling;
-    nextSibling.innerText = fileName;
-});
+const fileInput = document.querySelector('.form-control[type="file"]');
+if (fileInput) {
+    fileInput.addEventListener('change', function(e) {
+        if (e.target.files[0]) {
+            const fileName = e.target.files[0].name;
+            const fileSize = (e.target.files[0].size / 1024 / 1024).toFixed(2);
+            console.log(`Selected file: ${fileName} (${fileSize} MB)`);
+        }
+    });
+}
 </script>
+
+<style>
+.card {
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+}
+
+.card-header {
+    border-radius: 8px 8px 0 0;
+    font-weight: 600;
+}
+
+.btn-lg {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 500;
+}
+</style>
 {% endblock %}

@@ -4,6 +4,7 @@ from pydantic import BaseModel
 import schemas
 import shutil
 import os
+from pathlib import Path
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -25,7 +26,25 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-templates = Jinja2Templates(directory="templates")
+# Resolve templates directory for both portable and development environments
+def get_templates_dir():
+    """Get templates directory path, handling PyInstaller environment"""
+    import sys
+    # Check if running as PyInstaller executable
+    if getattr(sys, 'frozen', False):
+        # Running as executable - templates are in the exe's directory
+        app_root = os.path.dirname(sys.executable)
+    else:
+        # Running as script
+        app_root = os.path.dirname(os.path.abspath(__file__))
+    
+    templates_path = os.path.join(app_root, 'templates')
+    if not os.path.exists(templates_path):
+        # Fallback to relative path
+        templates_path = 'templates'
+    return templates_path
+
+templates = Jinja2Templates(directory=get_templates_dir())
 app.mount("/static", StaticFiles(directory="static", html=True), name="static")
 import time
 # provide a callable to templates for cache-busting
@@ -944,6 +963,7 @@ async def export_database(db: Session = Depends(get_db)):
     import shutil
     from datetime import datetime
     import os
+    import sqlite3
     
     # Close the current database connection
     db.close()
@@ -953,8 +973,27 @@ async def export_database(db: Session = Depends(get_db)):
     backup_filename = f"fabric_backup_{timestamp}.db"
     
     try:
+        # Verify database exists and is valid
+        if not os.path.exists("fabric.db"):
+            raise ValueError("Database file not found")
+        
+        # Validate database integrity before export
+        try:
+            conn = sqlite3.connect("fabric.db")
+            cursor = conn.cursor()
+            integrity_result = cursor.execute("PRAGMA integrity_check").fetchone()
+            if integrity_result[0] != 'ok':
+                raise ValueError(f"Database integrity check failed: {integrity_result[0]}")
+            conn.close()
+        except Exception as e:
+            raise ValueError(f"Database integrity check failed: {str(e)}")
+        
         # Create a copy of the database file
         shutil.copy2("fabric.db", backup_filename)
+        
+        # Verify the backup was created successfully
+        if not os.path.exists(backup_filename):
+            raise ValueError("Backup file creation failed")
         
         # Return the backup file
         # Create background tasks
@@ -979,6 +1018,8 @@ async def import_database(
     import sqlite3
     import os
     from tempfile import NamedTemporaryFile
+    from datetime import datetime
+    import shutil
     
     # Close the current database connection
     db.close()
@@ -993,35 +1034,66 @@ async def import_database(
         # Validate that this is a valid SQLite database
         try:
             conn = sqlite3.connect(temp_path)
-            # Check if this is our database schema by verifying tables
-            required_tables = {'companies', 'suppliers', 'customers', 'purchases', 'sales'}
+            
+            # Check integrity
             cursor = conn.cursor()
+            integrity_result = cursor.execute("PRAGMA integrity_check").fetchone()
+            if integrity_result[0] != 'ok':
+                raise ValueError(f"Database integrity check failed: {integrity_result[0]}")
+            
+            # Check if this is our database schema by verifying all required tables
+            required_tables = {'companies', 'suppliers', 'customers', 'purchases', 'sales', 'payments', 'purchase_payments'}
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
             existing_tables = {row[0] for row in cursor.fetchall()}
             conn.close()
             
-            if not required_tables.issubset(existing_tables):
-                raise ValueError("Invalid database schema: missing required tables")
+            # Check if minimum required tables exist
+            core_tables = {'companies', 'suppliers', 'customers', 'purchases', 'sales'}
+            if not core_tables.issubset(existing_tables):
+                missing = core_tables - existing_tables
+                raise ValueError(f"Invalid database schema: missing required tables: {', '.join(missing)}")
+            
+            # Warn if payment tables are missing but allow import
+            missing_optional = required_tables - existing_tables
+            if missing_optional:
+                pass  # Silently allow - may be older version
                 
-        except sqlite3.Error:
-            raise ValueError("Invalid SQLite database file")
+        except sqlite3.Error as e:
+            raise ValueError(f"Invalid SQLite database file: {str(e)}")
         
         # Create a backup of current database
         backup_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_filename = f"fabric_backup_before_import_{backup_timestamp}.db"
-        shutil.copy2("fabric.db", backup_filename)
+        
+        if os.path.exists("fabric.db"):
+            shutil.copy2("fabric.db", backup_filename)
         
         # Replace the current database with the uploaded one
         shutil.copy2(temp_path, "fabric.db")
         
+        # Verify the import was successful
+        try:
+            verify_conn = sqlite3.connect("fabric.db")
+            verify_cursor = verify_conn.cursor()
+            verify_result = verify_cursor.execute("PRAGMA integrity_check").fetchone()
+            if verify_result[0] != 'ok':
+                raise ValueError(f"Database verification failed after import: {verify_result[0]}")
+            verify_conn.close()
+        except Exception as e:
+            # Restore from backup if verification fails
+            if os.path.exists(backup_filename):
+                shutil.copy2(backup_filename, "fabric.db")
+            raise ValueError(f"Database verification after import failed: {str(e)}. Restored from backup.")
+        
         # Clean up
-        os.unlink(temp_path)
+        if os.path.exists(temp_path):
+            os.unlink(temp_path)
         
         return templates.TemplateResponse(
-            "index.html",
+            "database_operations.html",
             {
                 "request": request,
-                "message": "Database imported successfully! Previous database has been backed up.",
+                "message": "✅ Database imported successfully! All data has been restored. Previous database backed up as: " + backup_filename,
                 "backup_file": backup_filename
             }
         )
@@ -1362,3 +1434,8 @@ def invoice_pdf(sale_id: int, db: Session = Depends(get_db)):
         media_type='application/pdf',
         headers={"Content-Disposition": f"inline; filename={filename}"}
     )
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
