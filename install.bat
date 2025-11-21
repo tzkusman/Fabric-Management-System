@@ -1,77 +1,61 @@
 @echo off
+REM ============================================================================
+REM FABRIC INVENTORY MANAGEMENT SYSTEM - ONE-CLICK INSTALLER LAUNCHER
+REM Double-click this file to install everything automatically
+REM ============================================================================
+
 setlocal enabledelayedexpansion
 
-echo ================================================
-echo        Fabric Inventory Setup Installer
-echo ================================================
+cls
 echo.
+echo ============================================================================
+echo FABRIC INVENTORY MANAGEMENT SYSTEM - INSTALLER v3.5
+echo ============================================================================
+echo.
+echo This installer will:
+echo   * Check for Python installation (or install Python 3.11)
+echo   * Create a virtual environment
+echo   * Install all required packages
+echo   * Set up application directories
+echo   * Create a desktop shortcut
+echo.
+echo Press any key to continue...
+pause >nul
 
-:: Change directory to where this .bat file is located
-cd /d "%~dp0"
-
-:: Check for Python installation
-echo Checking for Python installation...
-python --version >nul 2>&1
-if %errorlevel% neq 0 (
-    echo Python not found. Downloading and installing Python 3.11.5...
-    set "PYTHON_INSTALLER=python_installer.exe"
-    curl -L -o "%PYTHON_INSTALLER%" https://www.python.org/ftp/python/3.11.5/python-3.11.5-amd64.exe
-
-    echo Installing Python silently...
-    "%PYTHON_INSTALLER%" /quiet InstallAllUsers=1 PrependPath=1 Include_test=0
-    del "%PYTHON_INSTALLER%"
-
-    echo Waiting for Python to finish installing...
-    timeout /t 10 >nul
+REM Check for administrator privileges
+openfiles >nul 2>&1
+if errorlevel 1 (
+    echo.
+    echo ERROR: Administrator privileges required!
+    echo Please right-click this file and select "Run as administrator"
+    echo.
+    pause
+    exit /b 1
 )
 
-:: Verify Python installed
-python --version >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [ERROR] Python installation failed. Please install manually.
+REM Get the directory where this script is located
+cd /d "%~dp0"
+
+REM Run PowerShell installer with full admin privileges
+PowerShell -NoProfile -ExecutionPolicy Bypass -Command "& '%~dp0INSTALL.ps1'"
+
+if errorlevel 1 (
+    echo.
+    echo Installation failed. Please check the error messages above.
+    echo.
+    echo Installation failed. Please check the error messages above.
+    echo.
     pause
     exit /b 1
 )
 
 echo.
-echo ================================================
-echo       Python installation verified
-echo ================================================
+echo ============================================================================
+echo Installation completed successfully!
+echo ============================================================================
 echo.
-
-:: Upgrade pip globally (just in case)
-python -m ensurepip --upgrade
-python -m pip install --upgrade pip
-
-:: Create virtual environment if missing
-if not exist "venv" (
-    echo Creating virtual environment...
-    python -m venv "venv"
-)
-
-:: Activate virtual environment
-echo Activating virtual environment...
-call "venv\Scripts\activate"
-
-:: Upgrade pip inside venv safely
-echo Upgrading pip inside venv...
-"%~dp0venv\Scripts\python.exe" -m ensurepip --upgrade
-"%~dp0venv\Scripts\python.exe" -m pip install --upgrade pip
-
-:: Install dependencies
-if exist "requirements.txt" (
-    echo Installing dependencies from requirements.txt...
-    pip install -r "requirements.txt"
-) else (
-    echo No requirements.txt found, skipping package installation.
-)
-
+echo You can now:
+echo   1. Run START.bat to start the application
+echo   2. Use the "Fabric Manager" desktop shortcut
 echo.
-echo ================================================
-echo     Setup Completed Successfully!
-echo ================================================
-echo You can now run your app with: run.bat
-echo.
-
 pause
-exit /b
