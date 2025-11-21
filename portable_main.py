@@ -87,50 +87,13 @@ def open_browser(url, delay=2):
     thread = threading.Thread(target=_open, daemon=True)
     thread.start()
 
-def verify_assets():
-    """Verify all required assets are present"""
-    app_root = get_app_root()
-    
-    required_dirs = ['templates', 'static', 'data']
-    required_files = {
-        'templates': ['base.html', 'index.html'],
-        'static': ['styles.css']
-    }
-    
-    logger.info("Verifying application assets...")
-    
-    for dir_name in required_dirs:
-        dir_path = os.path.join(app_root, dir_name)
-        if not os.path.exists(dir_path):
-            logger.warning(f"Creating missing directory: {dir_name}")
-            os.makedirs(dir_path, exist_ok=True)
-    
-    for dir_name, files in required_files.items():
-        for file_name in files:
-            file_path = os.path.join(app_root, dir_name, file_name)
-            if not os.path.exists(file_path):
-                logger.warning(f"Missing file: {dir_name}/{file_name}")
-    
-    logger.info("Asset verification complete")
-
 def run_server():
     """Run the FastAPI server"""
     import uvicorn
     from main import app
     
-    # Try to load config from portable_config.py
-    try:
-        from portable_config import SERVER_HOST, SERVER_PORT, AUTO_OPEN_BROWSER, BROWSER_OPEN_DELAY
-        HOST = SERVER_HOST
-        PORT = SERVER_PORT
-        AUTO_BROWSER = AUTO_OPEN_BROWSER
-        BROWSER_DELAY = BROWSER_OPEN_DELAY
-    except ImportError:
-        HOST = "127.0.0.1"
-        PORT = 8000
-        AUTO_BROWSER = True
-        BROWSER_DELAY = 3
-    
+    HOST = "127.0.0.1"
+    PORT = 8000
     URL = f"http://{HOST}:{PORT}"
     
     logger.info("=" * 60)

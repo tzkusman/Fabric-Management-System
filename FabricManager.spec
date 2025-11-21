@@ -5,7 +5,7 @@ a = Analysis(
     ['portable_main.py'],
     pathex=[],
     binaries=[],
-    datas=[('templates', 'templates'), ('static', 'static'), ('data', 'data')],
+    datas=[('templates', 'templates'), ('static', 'static')],
     hiddenimports=['fastapi', 'uvicorn', 'sqlalchemy', 'jinja2', 'reportlab', 'pydantic', 'starlette', 'anyio', 'sniffio', 'h11'],
     hookspath=[],
     hooksconfig={},
@@ -35,5 +35,4 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['app_icon.ico'],
 )
