@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request, Form, Depends, HTTPException, File, UploadFile, BackgroundTasks
-from fastapi.responses import HTMLResponse, StreamingResponse, Response, FileResponse
+from fastapi.responses import HTMLResponse, StreamingResponse, Response, FileResponse, RedirectResponse
 from pydantic import BaseModel
 import schemas
 import shutil
@@ -1434,6 +1434,248 @@ def invoice_pdf(sale_id: int, db: Session = Depends(get_db)):
         media_type='application/pdf',
         headers={"Content-Disposition": f"inline; filename={filename}"}
     )
+
+
+# ===================== BANK STATEMENT ROUTES =====================
+
+@app.get('/bank/add-entry', response_class=HTMLResponse)
+def bank_add_entry_form(request: Request):
+    """Form to add manual bank entry"""
+    return templates.TemplateResponse('bank_add_entry.html', {"request": request})
+
+@app.get('/bank/statement', response_class=HTMLResponse)
+def bank_statement_view(request: Request, db: Session = Depends(get_db)):
+    """View complete bank statement with filters"""
+    transaction_type = request.query_params.get('type')
+    status = request.query_params.get('status')
+    date_from = request.query_params.get('date_from')
+    date_to = request.query_params.get('date_to')
+    bank_account = request.query_params.get('bank_account')
+    
+    date_from_obj = datetime.strptime(date_from, '%Y-%m-%d') if date_from else None
+    date_to_obj = datetime.strptime(date_to, '%Y-%m-%d') if date_to else None
+    
+    statements = crud.get_bank_statements(
+        db,
+        transaction_type=transaction_type,
+        status=status,
+        date_from=date_from_obj,
+        date_to=date_to_obj,
+        bank_account=bank_account
+    )
+    
+    summary = crud.get_bank_summary(db, date_from=date_from_obj, date_to=date_to_obj, bank_account=bank_account)
+    
+    # Get unique bank accounts for filter
+    all_statements = db.query(models.BankStatement).all()
+    bank_accounts = list(set([s.bank_account for s in all_statements if s.bank_account]))
+    
+    return templates.TemplateResponse('bank_statement.html', {
+        "request": request,
+        "statements": summary['statements'],
+        "summary": summary,
+        "bank_accounts": bank_accounts,
+        "filters": {
+            'type': transaction_type,
+            'status': status,
+            'date_from': date_from,
+            'date_to': date_to,
+            'bank_account': bank_account
+        }
+    })
+
+@app.get('/bank/dashboard', response_class=HTMLResponse)
+def bank_dashboard(request: Request, db: Session = Depends(get_db)):
+    """Bank dashboard with overview and reconciliation"""
+    date_from = request.query_params.get('date_from')
+    date_to = request.query_params.get('date_to')
+    
+    date_from_obj = datetime.strptime(date_from, '%Y-%m-%d') if date_from else None
+    date_to_obj = datetime.strptime(date_to, '%Y-%m-%d') if date_to else None
+    
+    summary = crud.get_bank_summary(db, date_from=date_from_obj, date_to=date_to_obj)
+    reconciliation = crud.get_bank_reconciliation_status(db, date_from=date_from_obj, date_to=date_to_obj)
+    
+    return templates.TemplateResponse('bank_dashboard.html', {
+        "request": request,
+        "summary": summary,
+        "reconciliation": reconciliation,
+        "filters": {
+            'date_from': date_from,
+            'date_to': date_to
+        }
+    })
+
+@app.get('/bank/reconciliation', response_class=HTMLResponse)
+def bank_reconciliation(request: Request, db: Session = Depends(get_db)):
+    """Bank reconciliation view with pending and cleared transactions"""
+    date_from = request.query_params.get('date_from')
+    date_to = request.query_params.get('date_to')
+    
+    date_from_obj = datetime.strptime(date_from, '%Y-%m-%d') if date_from else None
+    date_to_obj = datetime.strptime(date_to, '%Y-%m-%d') if date_to else None
+    
+    reconciliation = crud.get_bank_reconciliation_status(db, date_from=date_from_obj, date_to=date_to_obj)
+    
+    return templates.TemplateResponse('bank_reconciliation.html', {
+        "request": request,
+        "reconciliation": reconciliation,
+        "filters": {
+            'date_from': date_from,
+            'date_to': date_to
+        }
+    })
+
+@app.post('/bank/update-status/{statement_id}')
+def update_bank_statement_status(
+    statement_id: int,
+    status: str = Form(...),
+    reconciliation_notes: str = Form(None),
+    db: Session = Depends(get_db)
+):
+    """Update bank statement status (pending, cleared, failed)"""
+    try:
+        statement = crud.update_bank_statement(
+            db,
+            statement_id=statement_id,
+            status=status,
+            reconciliation_notes=reconciliation_notes
+        )
+        return {"ok": True, "message": f"Bank statement status updated to '{status}'"}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post('/bank/manual-entry')
+def add_manual_bank_entry(
+    request: Request,
+    transaction_type: str = Form(...),
+    amount: float = Form(...),
+    description: str = Form(...),
+    bank_account: str = Form(None),
+    reference_number: str = Form(None),
+    payment_method: str = Form(None),
+    status: str = Form('cleared'),
+    db: Session = Depends(get_db)
+):
+    """Add manual bank statement entry"""
+    try:
+        statement = crud.add_bank_statement(
+            db,
+            transaction_type=transaction_type,
+            amount=amount,
+            description=description,
+            bank_account=bank_account,
+            reference_number=reference_number,
+            payment_method=payment_method,
+            status=status
+        )
+        # Redirect to bank statement with success message
+        return RedirectResponse(url="/bank/statement?added=true", status_code=303)
+    except ValueError as e:
+        return templates.TemplateResponse('bank_add_entry.html', {
+            "request": request,
+            "error": str(e)
+        })
+
+@app.get('/bank/export.csv')
+def export_bank_statement(
+    type: str = None,
+    status: str = None,
+    date_from: str = None,
+    date_to: str = None,
+    bank_account: str = None,
+    db: Session = Depends(get_db)
+):
+    """Export bank statement as CSV"""
+    import csv, io
+    
+    date_from_obj = datetime.strptime(date_from, '%Y-%m-%d') if date_from else None
+    date_to_obj = datetime.strptime(date_to, '%Y-%m-%d') if date_to else None
+    
+    statements = crud.get_bank_statements(
+        db,
+        transaction_type=type,
+        status=status,
+        date_from=date_from_obj,
+        date_to=date_to_obj,
+        bank_account=bank_account
+    )
+    
+    summary = crud.get_bank_summary(db, date_from=date_from_obj, date_to=date_to_obj, bank_account=bank_account)
+    
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['Date', 'Type', 'Description', 'Amount', 'Account', 'Reference', 'Status', 'Payment Method'])
+    
+    for s in statements:
+        writer.writerow([
+            s.transaction_date.strftime('%Y-%m-%d %H:%M'),
+            s.transaction_type.upper(),
+            s.description,
+            s.amount,
+            s.bank_account or '',
+            s.reference_number or '',
+            s.status,
+            s.payment_method or ''
+        ])
+    
+    # Add summary
+    writer.writerow([])
+    writer.writerow(['SUMMARY', '', '', '', '', '', '', ''])
+    writer.writerow(['Opening Balance', '', '', summary['opening_balance'], '', '', '', ''])
+    writer.writerow(['Total Credits', '', '', summary['total_credit'], '', '', '', ''])
+    writer.writerow(['Total Debits', '', '', summary['total_debit'], '', '', '', ''])
+    writer.writerow(['Closing Balance', '', '', summary['closing_balance'], '', '', '', ''])
+    
+    return Response(
+        content=output.getvalue(),
+        media_type='text/csv',
+        headers={'Content-Disposition': f'attachment; filename=bank_statement_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'}
+    )
+
+# Bank API endpoints
+@app.get('/api/bank/summary')
+def api_bank_summary(date_from: str = None, date_to: str = None, db: Session = Depends(get_db)):
+    """Get bank summary via API"""
+    date_from_obj = datetime.strptime(date_from, '%Y-%m-%d') if date_from else None
+    date_to_obj = datetime.strptime(date_to, '%Y-%m-%d') if date_to else None
+    return crud.get_bank_summary(db, date_from=date_from_obj, date_to=date_to_obj)
+
+@app.get('/api/bank/reconciliation')
+def api_bank_reconciliation(date_from: str = None, date_to: str = None, db: Session = Depends(get_db)):
+    """Get reconciliation status via API"""
+    date_from_obj = datetime.strptime(date_from, '%Y-%m-%d') if date_from else None
+    date_to_obj = datetime.strptime(date_to, '%Y-%m-%d') if date_to else None
+    return crud.get_bank_reconciliation_status(db, date_from=date_from_obj, date_to=date_to_obj)
+
+@app.get('/api/bank/statements')
+def api_bank_statements(
+    type: str = None,
+    status: str = None,
+    date_from: str = None,
+    date_to: str = None,
+    db: Session = Depends(get_db)
+):
+    """Get bank statements via API"""
+    date_from_obj = datetime.strptime(date_from, '%Y-%m-%d') if date_from else None
+    date_to_obj = datetime.strptime(date_to, '%Y-%m-%d') if date_to else None
+    
+    statements = crud.get_bank_statements(
+        db,
+        transaction_type=type,
+        status=status,
+        date_from=date_from_obj,
+        date_to=date_to_obj
+    )
+    
+    return [{
+        'statement_id': s.statement_id,
+        'date': s.transaction_date.isoformat(),
+        'type': s.transaction_type,
+        'amount': s.amount,
+        'description': s.description,
+        'status': s.status
+    } for s in statements]
 
 
 if __name__ == "__main__":
