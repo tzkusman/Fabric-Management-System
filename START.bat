@@ -12,7 +12,8 @@ cd /d %SCRIPT_DIR%
 
 echo.
 echo ============================================
-echo   Fabric Management System
+echo   Fabric Management System v3.5
+echo   Complete Inventory & Banking Solution
 echo ============================================
 echo.
 
@@ -49,6 +50,11 @@ if not exist "models.py" (
 )
 if not exist "database.py" (
     echo [ERROR] database.py not found
+    pause
+    exit /b 1
+)
+if not exist "crud.py" (
+    echo [ERROR] crud.py not found
     pause
     exit /b 1
 )
@@ -114,6 +120,13 @@ echo ============================================
 echo.
 echo Browser will open automatically...
 echo If not, go to: http://127.0.0.1:8000
+echo.
+echo Features Available:
+echo   - Complete Inventory Management
+echo   - Sales & Purchase Tracking
+echo   - Bank Statement Reconciliation
+echo   - Payment Management
+echo   - Advanced Ledger Reports
 echo.
 echo Press CTRL+C to stop the server
 echo.
