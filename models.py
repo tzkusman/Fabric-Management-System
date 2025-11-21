@@ -105,3 +105,24 @@ class PurchasePayment(Base):
     recorded_by = Column(String, nullable=True)  # Who recorded this payment
     
     purchase = relationship("Purchase", back_populates="payments")
+
+class BankStatement(Base):
+    __tablename__ = "bank_statements"
+    statement_id = Column(Integer, primary_key=True, index=True)
+    transaction_date = Column(DateTime, default=datetime.utcnow)
+    transaction_type = Column(String, nullable=False)  # 'credit' (money in) or 'debit' (money out)
+    amount = Column(Float, nullable=False)
+    description = Column(String, nullable=False)  # e.g., "Sale Payment from Customer X", "Payment to Supplier Y"
+    bank_account = Column(String, nullable=True)  # Account number or name
+    reference_number = Column(String, nullable=True)  # Cheque number, transaction ID, transfer reference
+    related_sale_id = Column(Integer, ForeignKey("sales.sale_id"), nullable=True)  # Link to sale payment
+    related_purchase_id = Column(Integer, ForeignKey("purchases.purchase_id"), nullable=True)  # Link to purchase payment
+    payment_method = Column(String, nullable=True)  # 'bank', 'cheque', 'online', 'transfer'
+    status = Column(String, nullable=False, default='pending')  # 'pending', 'cleared', 'failed'
+    reconciliation_notes = Column(String, nullable=True)
+    recorded_by = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    sale = relationship("Sale")
+    purchase = relationship("Purchase")
+

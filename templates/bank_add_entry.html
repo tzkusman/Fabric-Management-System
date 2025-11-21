@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row">
+  <div class="col-md-8 offset-md-2">
+    <div class="card shadow-lg">
+      <div class="card-header bg-primary text-white">
+        <h4 class="mb-0"><i class="fas fa-plus-circle"></i> Add Manual Bank Entry</h4>
+      </div>
+      <div class="card-body">
+        <div class="alert alert-info">
+          <i class="fas fa-info-circle"></i> <strong>How it works:</strong>
+          <ul class="mb-0 mt-2">
+            <li><strong>Credits:</strong> Money coming INTO your bank (customer payments, deposits)</li>
+            <li><strong>Debits:</strong> Money going OUT of your bank (supplier payments, withdrawals)</li>
+            <li>Non-cash payments (bank, cheque, online) are automatically recorded here</li>
+          </ul>
+        </div>
+
+        <form method="post" action="/bank/manual-entry">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Transaction Type <span class="text-danger">*</span></label>
+              <div class="btn-group w-100" role="group">
+                <input type="radio" class="btn-check" name="transaction_type" id="credit" value="credit" required onchange="updateDescription()">
+                <label class="btn btn-outline-success" for="credit">
+                  <i class="fas fa-arrow-down"></i> Credit (Money In)
+                </label>
+                
+                <input type="radio" class="btn-check" name="transaction_type" id="debit" value="debit" onchange="updateDescription()">
+                <label class="btn btn-outline-danger" for="debit">
+                  <i class="fas fa-arrow-up"></i> Debit (Money Out)
+                </label>
+              </div>
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Amount <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <span class="input-group-text">₹</span>
+                <input type="number" class="form-control" name="amount" step="0.01" min="0.01" required placeholder="0.00">
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Description <span class="text-danger">*</span></label>
+            <textarea class="form-control" name="description" rows="2" required placeholder="e.g., Payment received from customer ABC, Payment to supplier XYZ, Withdrawal from ATM, etc."></textarea>
+            <small class="text-muted">Describe what this transaction is for</small>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Bank Account</label>
+              <input type="text" class="form-control" name="bank_account" placeholder="e.g., ACC-123456 or Bank Name">
+              <small class="text-muted">Optional: Your account identifier</small>
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Payment Method</label>
+              <select class="form-select" name="payment_method">
+                <option value="">-- Select Method --</option>
+                <option value="bank">Bank Transfer</option>
+                <option value="cheque">Cheque</option>
+                <option value="online">Online/Digital</option>
+                <option value="cash">Cash Deposit</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Reference Number</label>
+              <input type="text" class="form-control" name="reference_number" placeholder="Transaction ID, Cheque No., etc.">
+              <small class="text-muted">Optional: For tracking purposes</small>
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Status</label>
+              <select class="form-select" name="status">
+                <option value="cleared">Cleared (Confirmed)</option>
+                <option value="pending">Pending (Awaiting Confirmation)</option>
+                <option value="failed">Failed (Issue/Rejection)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Reconciliation Notes</label>
+            <textarea class="form-control" name="reconciliation_notes" rows="2" placeholder="Optional: Add any notes for reconciliation..."></textarea>
+          </div>
+
+          <div class="d-flex gap-2 justify-content-end">
+            <a href="/bank/statement" class="btn btn-outline-secondary">
+              <i class="fas fa-times"></i> Cancel
+            </a>
+            <button type="submit" class="btn btn-success btn-lg">
+              <i class="fas fa-save"></i> Record Bank Entry
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Examples Card -->
+    <div class="card mt-4">
+      <div class="card-header bg-info text-white">
+        <h5 class="mb-0"><i class="fas fa-lightbulb"></i> Examples</h5>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6">
+            <h6 class="text-success mb-2"><i class="fas fa-arrow-down"></i> Credit Examples (Money In)</h6>
+            <ul class="small">
+              <li>Payment from customer Ahmed Khan - Rs. 50,000</li>
+              <li>Bank deposit - Cheque #12345</li>
+              <li>Online transfer from customer ABC Ltd</li>
+              <li>Refund received - Rs. 5,000</li>
+            </ul>
+          </div>
+          <div class="col-md-6">
+            <h6 class="text-danger mb-2"><i class="fas fa-arrow-up"></i> Debit Examples (Money Out)</h6>
+            <ul class="small">
+              <li>Payment to supplier Ali Fabrics - Rs. 75,000</li>
+              <li>Check issued #54321</li>
+              <li>Bank charges - Rs. 500</li>
+              <li>ATM Withdrawal - Rs. 10,000</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-4 text-center">
+      <a href="/bank/dashboard" class="btn btn-outline-primary">
+        <i class="fas fa-arrow-left"></i> Back to Dashboard
+      </a>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

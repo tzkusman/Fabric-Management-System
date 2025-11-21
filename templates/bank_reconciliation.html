@@ -1,0 +1,270 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card bg-light mb-4 shadow-sm">
+  <div class="card-body">
+    <h2 class="card-title mb-3"><i class="fas fa-tasks"></i> Bank Reconciliation</h2>
+    <p class="card-text text-muted">Review and reconcile pending and cleared bank transactions</p>
+  </div>
+</div>
+
+<!-- Status Summary -->
+<div class="row mb-4">
+  <div class="col-md-4">
+    <div class="card border-success">
+      <div class="card-body text-center">
+        <i class="fas fa-check-circle text-success fa-3x mb-2"></i>
+        <h5 class="card-title">Cleared</h5>
+        <h2 class="text-success mb-1">{{ reconciliation.cleared_count }}</h2>
+        <small class="text-muted">Transactions</small>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-md-4">
+    <div class="card border-warning">
+      <div class="card-body text-center">
+        <i class="fas fa-hourglass text-warning fa-3x mb-2"></i>
+        <h5 class="card-title">Pending</h5>
+        <h2 class="text-warning mb-1">{{ reconciliation.pending_count }}</h2>
+        <small class="text-muted">Transactions</small>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-md-4">
+    <div class="card border-danger">
+      <div class="card-body text-center">
+        <i class="fas fa-times-circle text-danger fa-3x mb-2"></i>
+        <h5 class="card-title">Failed</h5>
+        <h2 class="text-danger mb-1">{{ reconciliation.failed_count }}</h2>
+        <small class="text-muted">Transactions</small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tabs for different statuses -->
+<ul class="nav nav-tabs mb-4" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active" id="cleared-tab" data-bs-toggle="tab" data-bs-target="#cleared" type="button" role="tab" aria-controls="cleared" aria-selected="true">
+      <i class="fas fa-check-circle text-success"></i> Cleared ({{ reconciliation.cleared_count }})
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending" type="button" role="tab" aria-controls="pending" aria-selected="false">
+      <i class="fas fa-hourglass text-warning"></i> Pending ({{ reconciliation.pending_count }})
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="failed-tab" data-bs-toggle="tab" data-bs-target="#failed" type="button" role="tab" aria-controls="failed" aria-selected="false">
+      <i class="fas fa-times-circle text-danger"></i> Failed ({{ reconciliation.failed_count }})
+    </button>
+  </li>
+</ul>
+
+<!-- Tab Content -->
+<div class="tab-content">
+  <!-- Cleared Transactions -->
+  <div class="tab-pane fade show active" id="cleared" role="tabpanel" aria-labelledby="cleared-tab">
+    <div class="card">
+      <div class="card-header bg-success text-white">
+        <h5 class="mb-0">
+          <i class="fas fa-check-circle"></i> Cleared Transactions
+          <span class="float-end">Credits: +Rs. {{ "%.2f"|format(reconciliation.cleared_credits) }} | Debits: -Rs. {{ "%.2f"|format(reconciliation.cleared_debits) }}</span>
+        </h5>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Date</th>
+              <th>Description</th>
+              <th>Type</th>
+              <th>Amount</th>
+              <th>Reference</th>
+              <th>Account</th>
+              <th>Method</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if reconciliation.cleared_statements %}
+              {% for stmt in reconciliation.cleared_statements %}
+              <tr>
+                <td>{{ stmt.transaction_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>{{ stmt.description }}</td>
+                <td>
+                  {% if stmt.transaction_type == 'credit' %}
+                    <span class="badge bg-success"><i class="fas fa-arrow-down"></i> Credit</span>
+                  {% else %}
+                    <span class="badge bg-danger"><i class="fas fa-arrow-up"></i> Debit</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if stmt.transaction_type == 'credit' %}
+                    <span class="text-success">+Rs. {{ "%.2f"|format(stmt.amount) }}</span>
+                  {% else %}
+                    <span class="text-danger">-Rs. {{ "%.2f"|format(stmt.amount) }}</span>
+                  {% endif %}
+                </td>
+                <td><code>{{ stmt.reference_number or '-' }}</code></td>
+                <td>{{ stmt.bank_account or '-' }}</td>
+                <td>{{ stmt.payment_method or '-' }}</td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="7" class="text-center text-muted py-4">No cleared transactions</td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pending Transactions -->
+  <div class="tab-pane fade" id="pending" role="tabpanel" aria-labelledby="pending-tab">
+    <div class="card">
+      <div class="card-header bg-warning text-dark">
+        <h5 class="mb-0">
+          <i class="fas fa-hourglass"></i> Pending Transactions (Awaiting Clearance)
+          <span class="float-end">Credits: +Rs. {{ "%.2f"|format(reconciliation.pending_credits) }} | Debits: -Rs. {{ "%.2f"|format(reconciliation.pending_debits) }}</span>
+        </h5>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Date</th>
+              <th>Description</th>
+              <th>Type</th>
+              <th>Amount</th>
+              <th>Reference</th>
+              <th>Account</th>
+              <th>Method</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if reconciliation.pending_statements %}
+              {% for stmt in reconciliation.pending_statements %}
+              <tr class="table-warning">
+                <td>{{ stmt.transaction_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>{{ stmt.description }}</td>
+                <td>
+                  {% if stmt.transaction_type == 'credit' %}
+                    <span class="badge bg-success"><i class="fas fa-arrow-down"></i> Credit</span>
+                  {% else %}
+                    <span class="badge bg-danger"><i class="fas fa-arrow-up"></i> Debit</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if stmt.transaction_type == 'credit' %}
+                    <span class="text-success">+Rs. {{ "%.2f"|format(stmt.amount) }}</span>
+                  {% else %}
+                    <span class="text-danger">-Rs. {{ "%.2f"|format(stmt.amount) }}</span>
+                  {% endif %}
+                </td>
+                <td><code>{{ stmt.reference_number or '-' }}</code></td>
+                <td>{{ stmt.bank_account or '-' }}</td>
+                <td>{{ stmt.payment_method or '-' }}</td>
+                <td>
+                  <form method="post" action="/bank/update-status/{{ stmt.statement_id }}" class="d-inline">
+                    <input type="hidden" name="status" value="cleared">
+                    <button type="submit" class="btn btn-sm btn-success" title="Mark as Cleared">
+                      <i class="fas fa-check"></i>
+                    </button>
+                  </form>
+                  <form method="post" action="/bank/update-status/{{ stmt.statement_id }}" class="d-inline">
+                    <input type="hidden" name="status" value="failed">
+                    <button type="submit" class="btn btn-sm btn-danger" title="Mark as Failed">
+                      <i class="fas fa-times"></i>
+                    </button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="8" class="text-center text-muted py-4">No pending transactions</td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Failed Transactions -->
+  <div class="tab-pane fade" id="failed" role="tabpanel" aria-labelledby="failed-tab">
+    <div class="card">
+      <div class="card-header bg-danger text-white">
+        <h5 class="mb-0">
+          <i class="fas fa-times-circle"></i> Failed Transactions (Require Attention)
+        </h5>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Date</th>
+              <th>Description</th>
+              <th>Type</th>
+              <th>Amount</th>
+              <th>Reference</th>
+              <th>Account</th>
+              <th>Method</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if reconciliation.failed_statements %}
+              {% for stmt in reconciliation.failed_statements %}
+              <tr class="table-danger">
+                <td>{{ stmt.transaction_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>{{ stmt.description }}</td>
+                <td>
+                  {% if stmt.transaction_type == 'credit' %}
+                    <span class="badge bg-success"><i class="fas fa-arrow-down"></i> Credit</span>
+                  {% else %}
+                    <span class="badge bg-danger"><i class="fas fa-arrow-up"></i> Debit</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if stmt.transaction_type == 'credit' %}
+                    <span class="text-success">+Rs. {{ "%.2f"|format(stmt.amount) }}</span>
+                  {% else %}
+                    <span class="text-danger">-Rs. {{ "%.2f"|format(stmt.amount) }}</span>
+                  {% endif %}
+                </td>
+                <td><code>{{ stmt.reference_number or '-' }}</code></td>
+                <td>{{ stmt.bank_account or '-' }}</td>
+                <td>{{ stmt.payment_method or '-' }}</td>
+                <td>
+                  <form method="post" action="/bank/update-status/{{ stmt.statement_id }}" class="d-inline">
+                    <input type="hidden" name="status" value="cleared">
+                    <button type="submit" class="btn btn-sm btn-success" title="Retry / Mark as Cleared">
+                      <i class="fas fa-redo"></i>
+                    </button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="8" class="text-center text-muted py-4">No failed transactions</td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mt-4">
+  <a href="/bank/dashboard" class="btn btn-outline-primary"><i class="fas fa-chart-line"></i> Back to Dashboard</a>
+  <a href="/bank/statement" class="btn btn-outline-secondary"><i class="fas fa-list"></i> View Statement</a>
+</div>
+
+{% endblock %}

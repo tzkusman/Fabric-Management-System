@@ -617,3 +617,207 @@ def get_purchase_payment_history(db: Session, supplier_id: int = None, date_from
         query = query.filter(models.PurchasePayment.payment_date < date_to_end)
     
     return query.order_by(models.PurchasePayment.payment_date.desc()).all()
+
+
+# ===================== BANK STATEMENT FUNCTIONS =====================
+
+def add_bank_statement(db: Session, transaction_type: str, amount: float, description: str, 
+                       bank_account: str = None, reference_number: str = None,
+                       related_sale_id: int = None, related_purchase_id: int = None,
+                       payment_method: str = None, status: str = 'pending', 
+                       reconciliation_notes: str = None, recorded_by: str = None):
+    """
+    Record a bank statement transaction
+    transaction_type: 'credit' (money in) or 'debit' (money out)
+    """
+    if transaction_type not in ['credit', 'debit']:
+        raise ValueError("transaction_type must be 'credit' or 'debit'")
+    
+    if amount <= 0:
+        raise ValueError("Amount must be greater than 0")
+    
+    statement = models.BankStatement(
+        transaction_type=transaction_type,
+        amount=amount,
+        description=description,
+        bank_account=bank_account,
+        reference_number=reference_number,
+        related_sale_id=related_sale_id,
+        related_purchase_id=related_purchase_id,
+        payment_method=payment_method,
+        status=status,
+        reconciliation_notes=reconciliation_notes,
+        recorded_by=recorded_by
+    )
+    db.add(statement)
+    db.commit()
+    db.refresh(statement)
+    return statement
+
+def get_bank_statement(db: Session, statement_id: int):
+    """Get a specific bank statement by ID"""
+    return db.query(models.BankStatement).filter(models.BankStatement.statement_id == statement_id).first()
+
+def get_bank_statements(db: Session, transaction_type: str = None, status: str = None, 
+                        date_from: datetime = None, date_to: datetime = None,
+                        bank_account: str = None):
+    """
+    Get bank statements with advanced filtering
+    """
+    query = db.query(models.BankStatement)
+    
+    if transaction_type:
+        query = query.filter(models.BankStatement.transaction_type == transaction_type)
+    
+    if status:
+        query = query.filter(models.BankStatement.status == status)
+    
+    if bank_account:
+        query = query.filter(models.BankStatement.bank_account == bank_account)
+    
+    if date_from:
+        query = query.filter(models.BankStatement.transaction_date >= date_from)
+    
+    if date_to:
+        from datetime import timedelta
+        date_to_end = date_to + timedelta(days=1)
+        query = query.filter(models.BankStatement.transaction_date < date_to_end)
+    
+    return query.order_by(models.BankStatement.transaction_date.desc()).all()
+
+def get_bank_summary(db: Session, date_from: datetime = None, date_to: datetime = None, bank_account: str = None):
+    """
+    Get bank statement summary with opening balance, total credits, total debits, closing balance
+    """
+    query = db.query(models.BankStatement)
+    
+    if bank_account:
+        query = query.filter(models.BankStatement.bank_account == bank_account)
+    
+    all_statements = query.order_by(models.BankStatement.transaction_date.asc()).all()
+    
+    # Calculate opening balance (before date_from)
+    opening_balance = 0.0
+    period_statements = []
+    
+    if date_from or date_to:
+        for stmt in all_statements:
+            stmt_date = stmt.transaction_date.date() if hasattr(stmt.transaction_date, 'date') else stmt.transaction_date
+            
+            if date_from:
+                date_from_obj = date_from.date() if hasattr(date_from, 'date') else date_from
+                if stmt_date < date_from_obj:
+                    if stmt.transaction_type == 'credit':
+                        opening_balance += stmt.amount
+                    else:
+                        opening_balance -= stmt.amount
+                    continue
+            
+            if date_to:
+                date_to_obj = date_to.date() if hasattr(date_to, 'date') else date_to
+                if stmt_date > date_to_obj:
+                    continue
+            
+            period_statements.append(stmt)
+    else:
+        period_statements = all_statements
+    
+    # Calculate totals for period
+    total_credit = sum(s.amount for s in period_statements if s.transaction_type == 'credit')
+    total_debit = sum(s.amount for s in period_statements if s.transaction_type == 'debit')
+    closing_balance = opening_balance + total_credit - total_debit
+    
+    return {
+        'opening_balance': round(opening_balance, 2),
+        'total_credit': round(total_credit, 2),
+        'total_debit': round(total_debit, 2),
+        'closing_balance': round(closing_balance, 2),
+        'transaction_count': len(period_statements),
+        'statements': period_statements
+    }
+
+def update_bank_statement(db: Session, statement_id: int, **kwargs):
+    """Update a bank statement record"""
+    statement = db.query(models.BankStatement).filter(models.BankStatement.statement_id == statement_id).first()
+    if not statement:
+        raise ValueError(f"Bank statement {statement_id} not found")
+    
+    for key, value in kwargs.items():
+        if hasattr(statement, key):
+            setattr(statement, key, value)
+    
+    db.commit()
+    db.refresh(statement)
+    return statement
+
+def delete_bank_statement(db: Session, statement_id: int):
+    """Delete a bank statement record"""
+    statement = db.query(models.BankStatement).filter(models.BankStatement.statement_id == statement_id).first()
+    if not statement:
+        raise ValueError(f"Bank statement {statement_id} not found")
+    
+    db.delete(statement)
+    db.commit()
+    return True
+
+def get_bank_reconciliation_status(db: Session, date_from: datetime = None, date_to: datetime = None):
+    """
+    Get reconciliation status with pending vs cleared transactions
+    """
+    query = db.query(models.BankStatement)
+    
+    if date_from:
+        query = query.filter(models.BankStatement.transaction_date >= date_from)
+    
+    if date_to:
+        from datetime import timedelta
+        date_to_end = date_to + timedelta(days=1)
+        query = query.filter(models.BankStatement.transaction_date < date_to_end)
+    
+    statements = query.all()
+    
+    pending = [s for s in statements if s.status == 'pending']
+    cleared = [s for s in statements if s.status == 'cleared']
+    failed = [s for s in statements if s.status == 'failed']
+    
+    pending_credits = sum(s.amount for s in pending if s.transaction_type == 'credit')
+    pending_debits = sum(s.amount for s in pending if s.transaction_type == 'debit')
+    cleared_credits = sum(s.amount for s in cleared if s.transaction_type == 'credit')
+    cleared_debits = sum(s.amount for s in cleared if s.transaction_type == 'debit')
+    
+    return {
+        'pending_count': len(pending),
+        'cleared_count': len(cleared),
+        'failed_count': len(failed),
+        'pending_credits': round(pending_credits, 2),
+        'pending_debits': round(pending_debits, 2),
+        'cleared_credits': round(cleared_credits, 2),
+        'cleared_debits': round(cleared_debits, 2),
+        'total_pending': round(pending_credits - pending_debits, 2),
+        'pending_statements': pending,
+        'cleared_statements': cleared,
+        'failed_statements': failed
+    }
+
+def link_payment_to_bank(db: Session, payment_id: int, payment_type: str, bank_statement_id: int):
+    """
+    Link a payment record to a bank statement
+    payment_type: 'sale' or 'purchase'
+    """
+    statement = db.query(models.BankStatement).filter(models.BankStatement.statement_id == bank_statement_id).first()
+    if not statement:
+        raise ValueError(f"Bank statement {bank_statement_id} not found")
+    
+    if payment_type == 'sale':
+        payment = db.query(models.Payment).filter(models.Payment.payment_id == payment_id).first()
+        if payment:
+            statement.related_sale_id = payment.sale_id
+    elif payment_type == 'purchase':
+        payment = db.query(models.PurchasePayment).filter(models.PurchasePayment.payment_id == payment_id).first()
+        if payment:
+            statement.related_purchase_id = payment.purchase_id
+    
+    db.commit()
+    db.refresh(statement)
+    return statement
+
